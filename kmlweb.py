@@ -8,9 +8,11 @@ ENODEB_MULTIPLIER = 256
 DEFAULT_RADIUS_METERS = 2000
 KML_ALTITUDE = 100
 
+# Updated with correct frequency column names
 TARGET_COLUMNS = [
     'cell_id', 'licensee_name*', 'technology', 
-    'latitude', 'longitude', 'tx_ant_horiz_beamwidth', 'tx_ant_azimuth'
+    'latitude', 'longitude', 'tx_ant_horiz_beamwidth', 'tx_ant_azimuth',
+    'tx_frequency', 'rx_frequency'
 ]
 PROVINCE_COLUMN = 'province_code'
 
@@ -127,7 +129,7 @@ if st.button("Generate KML", type="primary"):
     if not calc_data:
         st.warning("No valid tower data entered.")
     else:
-        # Construct the file path based on the selected province (Now looking for .zip)
+        # Construct the file path based on the selected province (looking for .zip)
         target_file = f"split_data/{province_code.upper()}_towers.zip"
         
         if not os.path.exists(target_file):
