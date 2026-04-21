@@ -160,8 +160,9 @@ province_code = st.selectbox(
 
 st.divider()
 
-# 2. Tower Data Section (Moved Above LBS)
+# 2. Tower Data Section
 st.subheader("Enter Tower Data")
+st.markdown("[Download ISED CSV](https://www.ic.gc.ca/engineering/SMS_TAFL_Files/Site_Data_Extract_FX.zip)")
 st.info("Add or remove rows as needed. Leaving a row's ID blank will ignore it.")
 
 tab1, tab2, tab3 = st.tabs(["5G Towers", "4G Towers", "2G/3G Towers"])
@@ -171,7 +172,8 @@ with tab1:
     df_5g = st.data_editor(df_5g_init, num_rows="dynamic", use_container_width=True, key="5g")
 
 with tab2:
-    df_4g_init = pd.DataFrame([{"eNodeB": None, "CellID": None, "Radius_m": DEFAULT_RADIUS_METERS}] * 3)
+    # MODIFIED: Changed label to 'Tower ID (Optional)'
+    df_4g_init = pd.DataFrame([{"Tower ID (Optional)": None, "eNodeB": None, "CellID": None, "Radius_m": DEFAULT_RADIUS_METERS}] * 3)
     df_4g = st.data_editor(df_4g_init, num_rows="dynamic", use_container_width=True, key="4g")
 
 with tab3:
@@ -180,15 +182,14 @@ with tab3:
 
 st.divider()
 
-# 3. LBS Pings Section (Moved Below Towers)
-st.subheader("LBS Pings - OPTIONAL")
+# 3. LBS Pings Section
+st.subheader("LBS Pings")
 st.info("Upload an Excel file of pings, or enter them manually. You can do both at the same time!")
 
 lbs_file = st.file_uploader("Upload LBS Pings (.xlsx)", type=['xlsx'])
 st.caption("Required columns: Start Date/Time, Latitude, Longitude, Radius")
 
 st.markdown("**Manual LBS Entry:**")
-# CHANGED: 'Label' to 'Start Date/Time', defaulting to None
 df_lbs_init = pd.DataFrame([{"Start Date/Time": None, "Latitude": None, "Longitude": None, "Radius": DEFAULT_RADIUS_METERS}] * 3)
 df_lbs_manual = st.data_editor(df_lbs_init, num_rows="dynamic", use_container_width=True, key="lbs_manual")
 
@@ -201,7 +202,6 @@ if st.button("Generate KML", type="primary"):
     manual_lbs_list = []
     try:
         for _, row in df_lbs_manual.dropna(subset=['Latitude', 'Longitude']).iterrows():
-            # Check if the field is empty or NaN
             val_time = row['Start Date/Time']
             time_str = str(val_time) if pd.notna(val_time) and str(val_time).strip() != "" else "Manual Ping"
             
@@ -246,9 +246,17 @@ if st.button("Generate KML", type="primary"):
         for _, row in df_5g.dropna(subset=['CellID']).iterrows():
             calc_data.append({'TowerID': str(int(row['CellID'])), 'CustomRadius': float(row['Radius_m'])})
             
-        for _, row in df_4g.dropna(subset=['eNodeB', 'CellID']).iterrows():
-            tid = str((int(row['eNodeB']) * ENODEB_MULTIPLIER) + int(row['CellID']))
-            calc_data.append({'TowerID': tid, 'CustomRadius': float(row['Radius_m'])})
+        # MODIFIED: Look for 'Tower ID (Optional)' instead of 'Tower ID'
+        for _, row in df_4g.iterrows():
+            has_explicit_id = pd.notna(row.get('Tower ID (Optional)')) and str(row['Tower ID (Optional)']).strip() != ""
+            has_calc_id = pd.notna(row.get('eNodeB')) and pd.notna(row.get('CellID'))
+            
+            if has_explicit_id:
+                tid = str(int(float(row['Tower ID (Optional)'])))
+                calc_data.append({'TowerID': tid, 'CustomRadius': float(row['Radius_m'])})
+            elif has_calc_id:
+                tid = str((int(row['eNodeB']) * ENODEB_MULTIPLIER) + int(row['CellID']))
+                calc_data.append({'TowerID': tid, 'CustomRadius': float(row['Radius_m'])})
             
         for _, row in df_legacy.dropna(subset=['LAC', 'CellID']).iterrows():
             tid = f"{int(row['LAC'])}.*{int(row['CellID'])}"
