@@ -172,7 +172,6 @@ with tab1:
     df_5g = st.data_editor(df_5g_init, num_rows="dynamic", use_container_width=True, key="5g")
 
 with tab2:
-    # MODIFIED: Changed label to 'Tower ID (Optional)'
     df_4g_init = pd.DataFrame([{"Tower ID (Optional)": None, "eNodeB": None, "CellID": None, "Radius_m": DEFAULT_RADIUS_METERS}] * 3)
     df_4g = st.data_editor(df_4g_init, num_rows="dynamic", use_container_width=True, key="4g")
 
@@ -246,7 +245,6 @@ if st.button("Generate KML", type="primary"):
         for _, row in df_5g.dropna(subset=['CellID']).iterrows():
             calc_data.append({'TowerID': str(int(row['CellID'])), 'CustomRadius': float(row['Radius_m'])})
             
-        # MODIFIED: Look for 'Tower ID (Optional)' instead of 'Tower ID'
         for _, row in df_4g.iterrows():
             has_explicit_id = pd.notna(row.get('Tower ID (Optional)')) and str(row['Tower ID (Optional)']).strip() != ""
             has_calc_id = pd.notna(row.get('eNodeB')) and pd.notna(row.get('CellID'))
@@ -313,15 +311,19 @@ if st.button("Generate KML", type="primary"):
                     if final_df.empty:
                          st.warning("No matching records found for the entered tower IDs.")
 
-        kml_string, actual_lbs_count = generate_kml_content(final_df, lbs_data)
-        
-        tower_count = len(final_df)
-        
-        st.success(f"Successfully generated KML! (Sectors: {tower_count} | LBS Pings: {actual_lbs_count})")
-        
-        st.download_button(
-            label="⬇️ Download KML File",
-            data=kml_string,
-            file_name="Investigation_Map.kml",
-            mime="application/vnd.google-earth.kml+xml"
-        )
+        # --- NEW CHECK: Do not build KML if both datasets are empty ---
+        if final_df.empty and (lbs_data is None or lbs_data.empty):
+            st.error("No matching towers found and no LBS pings provided. KML generation aborted.")
+        else:
+            kml_string, actual_lbs_count = generate_kml_content(final_df, lbs_data)
+            
+            tower_count = len(final_df)
+            
+            st.success(f"Successfully generated KML! (Sectors: {tower_count} | LBS Pings: {actual_lbs_count})")
+            
+            st.download_button(
+                label="⬇️ Download KML File",
+                data=kml_string,
+                file_name="Investigation_Map.kml",
+                mime="application/vnd.google-earth.kml+xml"
+            )
